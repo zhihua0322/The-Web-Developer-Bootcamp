@@ -4,6 +4,7 @@ var express     = require("express"),
     bodyParser  = require("body-parser"),
     mongoose    = require("mongoose"),
     passport    = require("passport"),
+    cookieParser = require("cookie-parser"),
     flash       = require("connect-flash"),
     LocalStrategy   = require("passport-local"),
     methodOverride = require("method-override"),
@@ -33,16 +34,18 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.set("view engine", "ejs");
 app.use(express.static(__dirname + "/public"));
 app.use(methodOverride("_method"));
-app.use(flash());
+app.use(cookieParser('secret'));
+app.locals.moment = require('moment');
 // seedDB();
 
 //PASSPORT CONFIGURATION
 app.use(require("express-session")({
-    secret: "eat shit",
+    secret: "Hhhhhh",
     resave: false,
     saveUninitialized: false
 }));
 
+app.use(flash());
 app.use(passport.initialize());
 app.use(passport.session());
 passport.use(new LocalStrategy(User.authenticate())); //passport authenticate middleware

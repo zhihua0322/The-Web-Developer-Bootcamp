@@ -2,6 +2,7 @@ var express = require("express");
 var router = express.Router(); //a new instance of express router and adding routes to this router. 
 var passport = require("passport");
 var User = require("../models/user");
+var Campground = require("../models/campground");
 var async = require("async");
 var nodemailer = require("nodemailer");
 var crypto = require("crypto");
@@ -19,37 +20,56 @@ router.get("/", function(req, res) {
 
 //show REGISTER form
 router.get("/register", function(req, res){
-    res.render("register");
+   res.render("register", {page: 'register'}); 
 });
 
-//handle signup logic
+// handle sign up logic
 router.post("/register", function(req, res){
-    var newUser = new User({username: req.body.username});
+    var newUser = new User({
+        username: req.body.username,
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        email: req.body.email,
+        avatar: req.body.avatar
+      });
+
+    if(req.body.adminCode === 'secretcode123') {
+      newUser.isAdmin = true;
+    }
+
     User.register(newUser, req.body.password, function(err, user){
-        if (err){
-            req.flash("error", err.message); //let passport display error
-            return res.render("register");
-            }
-            passport.authenticate("local")(req, res, function(){
-                req.flash("success", "Welcome aboard, " + user.username + "!");
-                res.redirect("/campgrounds");
+        if(err){
+            console.log(err);
+            return res.render("register", {error: err.message});
+        }
+        passport.authenticate("local")(req, res, function(){
+           req.flash("success", "Successfully Signed Up! Nice to meet you " + req.body.username);
+           res.redirect("/campgrounds"); 
         });
     });
 });
 
-// show LOGIN form
+//show login form
 router.get("/login", function(req, res){
-    res.render("login");
+   res.render("login", {page: 'login'}); 
 });
 
 
-
-//LOGIN route + logic
+// handling login logic
 router.post("/login", passport.authenticate("local", 
-    {    //passport authenticate middleware
+    {
         successRedirect: "/campgrounds",
-        failureRedirect: "/login"
-    }), function(req, res){ //not required
+        failureRedirect: "/login",
+        failureFlash: true,
+        successFlash: 'Welcome to YelpCamp!'
+    }), function(req, res){
+});
+
+// logout route
+router.get("/logout", function(req, res){
+   req.logout();
+   req.flash("success", "See you later!");
+   res.redirect("/campgrounds");
 });
 
 // forgot password
@@ -169,12 +189,21 @@ router.post('/reset/:token', function(req, res) {
   });
 });
 
-
-//LOGOUT route
-router.get("/logout", function(req, res){
-    req.logout(); // part of the packages
-    req.flash("success", "Logged you out!"); //flash message
-    res.redirect("/campgrounds");
+// USER PROFILE
+router.get("/users/:id", function(req, res) {
+  User.findById(req.params.id, function(err, foundUser) {
+    if(err) {
+      req.flash("error", "Something went wrong.");
+      res.redirect("/");
+    }
+    Campground.find().where('author.id').equals(foundUser._id).exec(function(err, campgrounds) {
+      if(err) {
+        req.flash("error", "Something went wrong.");
+        res.redirect("/");
+      }
+      res.render("users/show", {user: foundUser, campgrounds: campgrounds});
+    })
+  });
 });
 
 module.exports = router; //returning/exporting router at the end
